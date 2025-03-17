@@ -1,5 +1,6 @@
 ﻿using DemoLogin.DTOs;
 using DemoLogin.Repositories.Contracts;
+using DemoLogin.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,10 +8,27 @@ namespace DemoLogin.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [AllowAnonymous]
     public class AuthenticationController(IUserAccount accountInterface) : ControllerBase
     {
+        [HttpGet("user")]
+        [Authorize]
+        public async Task<ActionResult<UserResponse>> GetUserAsync()
+        {
+            var authHeader = Request.Headers["Authorization"].ToString();
+            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+                return Unauthorized("Token is missing or invalid.");
+
+            var token = authHeader.Substring("Bearer ".Length).Trim();
+            var response = await accountInterface.GetUserAsync(token);
+
+            if (!response.Flag)
+                return BadRequest(response.Message);
+
+            return Ok(response);
+        }
+
         [HttpPost("register")]
+        [AllowAnonymous]
         public async Task<IActionResult> CreateAsync(RegisterDto user)
         {
             if (user is null)
@@ -21,6 +39,7 @@ namespace DemoLogin.Controllers
         }
 
         [HttpPost("login")]
+        [AllowAnonymous]
         public async Task<IActionResult> SignInAsync(LoginDto user)
         {
             if (user is null)
@@ -30,6 +49,7 @@ namespace DemoLogin.Controllers
         }
 
         [HttpPost("refresh-token")]
+        [AllowAnonymous]
         public async Task<IActionResult> RefreshTokenAsync(RefreshTokenDto token)
         {
             if (token is null)

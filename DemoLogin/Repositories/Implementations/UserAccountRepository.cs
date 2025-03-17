@@ -16,6 +16,31 @@ namespace DemoLogin.Repositories.Implementations
 {
     public class UserAccountRepository(IOptions<JwtSection> config, AppDbContext appDbContext) : IUserAccount
     {
+        public async Task<UserResponse> GetUserAsync(string token)
+        {
+            if (string.IsNullOrEmpty(token))
+                return new UserResponse(false, "Token is missing or invalid.");
+
+            // Validar y decodificar el token
+            var handler = new JwtSecurityTokenHandler();
+            var jwtToken = handler.ReadJwtToken(token);
+
+            // Obtener el claim del email
+            var emailClaim = jwtToken.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Email);
+            if (emailClaim == null)
+                return new UserResponse(false, "Email claim is missing in token.");
+
+            var email = emailClaim.Value;
+
+            // Buscar al usuario por el email
+            var user = await appDbContext.ApplicationUsers.FirstOrDefaultAsync(u => u.Email == email);
+            if (user == null)
+                return new UserResponse(false, "User not found.");
+
+            // Devolver la información del usuario
+            return new UserResponse(true, "User info", user.Email!, user.Fullname!);
+        }
+
         public async Task<GeneralResponse> CreateAsync(RegisterDto user)
         {
             if (user is null)
@@ -73,7 +98,7 @@ namespace DemoLogin.Repositories.Implementations
             if (getUserRole is null)
                 return new LoginResponse(false, "User role not found.");
 
-            var getRoleName = await FindRoleName(getUserRole.Id);
+            var getRoleName = await FindRoleName(getUserRole.RoleId);
             if (getRoleName is null)
                 return new LoginResponse(false, "User role not found.");
 
