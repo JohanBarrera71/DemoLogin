@@ -29,7 +29,7 @@ namespace DemoLogin.Controllers
 
         [HttpPost("register")]
         [AllowAnonymous]
-        public async Task<IActionResult> CreateAsync(RegisterDto user)
+        public async Task<IActionResult> CreateAsync([FromForm] RegisterDto user)
         {
             if (user is null)
                 return BadRequest("Model is empty.");
@@ -50,11 +50,11 @@ namespace DemoLogin.Controllers
 
         [HttpPost("refresh-token")]
         [AllowAnonymous]
-        public async Task<IActionResult> RefreshTokenAsync(RefreshTokenDto token)
+        public async Task<IActionResult> RefreshTokenAsync(RefreshTokenDto refreshToken)
         {
-            if (token is null)
+            if (refreshToken is null)
                 return BadRequest("Model is empty");
-            var result = await accountInterface.RefreshTokenAsync(token);
+            var result = await accountInterface.RefreshTokenAsync(refreshToken);
             return Ok(result);
         }
     }

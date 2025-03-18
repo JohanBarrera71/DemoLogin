@@ -72,6 +72,7 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddScoped<IUserAccount, UserAccountRepository>();
+builder.Services.AddTransient<IFileStorage, FileStorageAzure>();
 
 builder.Services.AddCors(options =>
 {

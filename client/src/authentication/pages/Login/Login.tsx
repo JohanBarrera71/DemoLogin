@@ -39,7 +39,6 @@ export default function Login() {
     <div className={classes.root}>
       <Box>
         <h1>Sign in</h1>
-        <p>Stayy update on your professional world.</p>
         <form onSubmit={doLogin}>
           <Input
             label="Email"
@@ -57,13 +56,10 @@ export default function Login() {
           <Button type="submit" disabled={isLoading}>
             {isLoading ? "..." : "Sign in"}
           </Button>
-          <Link to="/authentication/request-password-reset">
-            Forgot password?
-          </Link>
         </form>
         <Separator>Or</Separator>
         <div className={classes.register}>
-          New to LinkedIn? <Link to="/authentication/signup">Join now</Link>
+          New to Demo Login? <Link to="/authentication/signup">Join now</Link>
         </div>
       </Box>
     </div>

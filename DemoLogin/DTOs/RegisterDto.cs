@@ -1,4 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using DemoLogin.Validations;
+using PeliculasApi.Validations;
+using System.ComponentModel.DataAnnotations;
 
 namespace DemoLogin.DTOs
 {
@@ -13,5 +15,9 @@ namespace DemoLogin.DTOs
         [Compare(nameof(Password))]
         [Required]
         public string? ConfirmPassword { get; set; }
+
+        [FileWeightValidation(MaxWeightInMegaBytes: 5)]
+        [FileTypeValidation(FileTypeGroup.Image)]
+        public IFormFile PhotoProfile { get; set; }
     }
 }

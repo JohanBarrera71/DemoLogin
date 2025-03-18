@@ -19,9 +19,17 @@ export default function Signup() {
     const password = e.currentTarget.password.value;
     const fullname = e.currentTarget.fullname.value;
     const confirmPassword = e.currentTarget.confirmPassword.value;
+    const photoProfile = e.currentTarget.photoProfile.files[0];
+
+    if (!photoProfile) {
+      setErrorMessage("Please upload a profile picture.");
+      return;
+    }
+
+    setIsLoading(true);
 
     try {
-      await signup(email, password, fullname, confirmPassword);
+      await signup(email, password, fullname, confirmPassword, photoProfile);
       navigate("/");
     } catch (error) {
       if (error instanceof Error) {
@@ -38,7 +46,6 @@ export default function Signup() {
     <div className={classes.root}>
       <Box>
         <h1>Sign up</h1>
-        <p>Make the most of your professional life.</p>
         <form onSubmit={doSignup}>
           <Input type="email" id="email" label="Email" />
           <Input type="text" id="fullname" label="Full Name" />
@@ -48,14 +55,23 @@ export default function Signup() {
             id="confirmPassword"
             label="Confirm Password"
           />
+          <div>
+            <label htmlFor="phtotProfile">Profile Picture:</label>
+            <input
+              type="file"
+              id="photoProfile"
+              name="photoProfile"
+              accept="image/*"
+            />
+          </div>
           {errorMessage && <p className={classes.error}>{errorMessage}</p>}
           <Button type="submit" disabled={isLoading}>
-            Agree & Join
+            Join
           </Button>
         </form>
         <Separator>Or</Separator>
         <div className={classes.register}>
-          Already on LinkedIn? <Link to="/authentication/login">Sign in</Link>
+          Already on Demo Login? <Link to="/authentication/login">Sign in</Link>
         </div>
       </Box>
     </div>

@@ -14,8 +14,10 @@ using System.Text;
 
 namespace DemoLogin.Repositories.Implementations
 {
-    public class UserAccountRepository(IOptions<JwtSection> config, AppDbContext appDbContext) : IUserAccount
+    public class UserAccountRepository(IOptions<JwtSection> config, AppDbContext appDbContext, IFileStorage fileStorage) : IUserAccount
     {
+        private readonly string container = "users";
+
         public async Task<UserResponse> GetUserAsync(string token)
         {
             if (string.IsNullOrEmpty(token))
@@ -38,7 +40,7 @@ namespace DemoLogin.Repositories.Implementations
                 return new UserResponse(false, "User not found.");
 
             // Devolver la información del usuario
-            return new UserResponse(true, "User info", user.Email!, user.Fullname!);
+            return new UserResponse(true, "User info", user.Email!, user.Fullname!, user.PhotoPerfil!);
         }
 
         public async Task<GeneralResponse> CreateAsync(RegisterDto user)
@@ -51,12 +53,25 @@ namespace DemoLogin.Repositories.Implementations
                 return new GeneralResponse(false, "User registered already.");
 
             // Save user
-            var applicationUser = await AddToDatabase(new ApplicationUser()
+            var applicationUser = new ApplicationUser()
             {
                 Fullname = user.Fullname,
                 Email = user.Email,
-                Password = BCrypt.Net.BCrypt.HashPassword(user.Password)
-            });
+                Password = BCrypt.Net.BCrypt.HashPassword(user.Password),
+            };
+
+            // Upload Image Profile to a Blob
+            if (user.PhotoProfile != null)
+            {
+                using (var memoryStream = new MemoryStream())
+                {
+                    await user.PhotoProfile.CopyToAsync(memoryStream);
+                    var content = memoryStream.ToArray();
+                    var extension = Path.GetExtension(user.PhotoProfile.FileName);
+                    applicationUser.PhotoPerfil = await fileStorage.SaveFile(content, extension, container, user.PhotoProfile.ContentType);
+                }
+            }
+            await AddToDatabase(applicationUser);
 
             // Check, create and assign role
             var checkAdminRole = await appDbContext.SystemRoles.FirstOrDefaultAsync(_ => _.Name!.Equals(Constants.Admin));
@@ -126,7 +141,7 @@ namespace DemoLogin.Repositories.Implementations
             if (token is null)
                 return new LoginResponse(false, "Model is empty.");
 
-            var findToken = await appDbContext.RefreshTokenInfos.FirstOrDefaultAsync(_ => _.Token!.Equals(token.Token));
+            var findToken = await appDbContext.RefreshTokenInfos.FirstOrDefaultAsync(_ => _.Token!.Equals(token.RefreshToken));
             if (findToken is null)
                 return new LoginResponse(false, "Refresh token is required");
 
@@ -165,7 +180,7 @@ namespace DemoLogin.Repositories.Implementations
                 issuer: config.Value.Issuer,
                 audience: config.Value.Audience,
                 claims: userClaims,
-                expires: DateTime.UtcNow.AddHours(1),
+                expires: DateTime.UtcNow.AddMinutes(1),
                 signingCredentials:credentials
                 );
 

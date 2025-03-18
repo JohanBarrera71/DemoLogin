@@ -1,0 +1,32 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  h1 {
+    font-size: 2rem;
+    text-align: center;
+    margin-bottom: 2rem;
+
+    span {
+      color: #26a69a;
+    }
+  }
+
+  .image {
+    border-radius: 100%;
+    background-color: rgb(59, 59, 59);
+    width: 400px;
+    height: 400px;
+    object-fit: cover;
+  }
+
+  .info {
+    margin-top: 2rem;
+    font-size: 1.2rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+}

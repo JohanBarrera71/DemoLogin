@@ -6,6 +6,7 @@ export interface User {
   id?: string;
   email: string;
   fullname: string;
+  photoProfile: string;
 }
 
 interface AuthenticationContextType {
@@ -15,8 +16,10 @@ interface AuthenticationContextType {
     email: string,
     password: string,
     fullname: string,
-    confirmPassword: string
+    confirmPassword: string,
+    photoProfile: File
   ) => Promise<void>;
+  logout: () => void;
 }
 
 const AuthenticationContext = createContext<AuthenticationContextType | null>(
@@ -52,6 +55,7 @@ export default function AuthContextProvider() {
       const data = await response.json();
       if (data.flag) {
         localStorage.setItem("token", data.token);
+        localStorage.setItem("refreshToken", data.refreshToken);
       } else {
         throw new Error(data.message);
       }
@@ -65,16 +69,22 @@ export default function AuthContextProvider() {
     email: string,
     password: string,
     fullname: string,
-    confirmPassword: string
+    confirmPassword: string,
+    photoProfile: File
   ) => {
+    const formData = new FormData();
+    formData.append("email", email);
+    formData.append("password", password);
+    formData.append("fullname", fullname);
+    formData.append("confirmPassword", confirmPassword);
+    formData.append("photoProfile", photoProfile);
+
     const response = await fetch(
       import.meta.env.VITE_API_URL + "/api/Authentication/register",
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password, fullname, confirmPassword }),
+
+        body: formData,
       }
     );
     if (response.ok) {
@@ -86,8 +96,43 @@ export default function AuthContextProvider() {
     }
   };
 
+  const refreshToken = async () => {
+    try {
+      const refreshToken = localStorage.getItem("refreshToken");
+      if (!refreshToken) throw new Error("No refresh token found");
+
+      const response = await fetch(
+        import.meta.env.VITE_API_URL + "/api/Authentication/refresh-token",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({ refreshToken }),
+        }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        if (data.flag) {
+          localStorage.setItem("token", data.token);
+          localStorage.setItem("refreshToken", data.refreshToken);
+        } else {
+          throw new Error(data.message);
+        }
+        return data.token;
+      } else {
+        throw new Error("Faailed to refresh token");
+      }
+    } catch (e) {
+      console.log("Error refreshing token: ", e);
+      logout();
+    }
+  };
+
   const logout = async () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
     setUser(null);
   };
 
@@ -102,13 +147,41 @@ export default function AuthContextProvider() {
           },
         }
       );
-      if (!response.ok) {
+
+      if (response.status === 401) {
+        // Si el token ha expirado
+        console.log("Token expirado, intentando refrescar...");
+        const newToken = await refreshToken();
+        if (newToken) {
+          // Reintenta la solicitud con el nuevo token
+          const retryResponse = await fetch(
+            import.meta.env.VITE_API_URL + "/api/Authentication/user",
+            {
+              method: "GET",
+              headers: {
+                Authorization: `Bearer ${newToken}`,
+              },
+            }
+          );
+
+          if (retryResponse.ok) {
+            const user = await retryResponse.json();
+            if (user.flag) {
+              setUser(user);
+            } else throw new Error(user.message);
+          } else {
+            throw new Error("Authentication failed");
+          }
+        }
+      } else if (response.ok) {
+        const user = await response.json();
+        setUser(user);
+      } else {
         throw new Error("Authentication failed");
       }
-      const user = await response.json();
-      setUser(user);
     } catch (e) {
-      console.log(e);
+      console.error(e);
+      logout();
     } finally {
       setIsLoading(false);
     }
@@ -134,7 +207,7 @@ export default function AuthContextProvider() {
   }
 
   return (
-    <AuthenticationContext.Provider value={{ user, login, signup }}>
+    <AuthenticationContext.Provider value={{ user, login, signup, logout }}>
       <Outlet />
     </AuthenticationContext.Provider>
   );
