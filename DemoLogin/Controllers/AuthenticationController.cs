@@ -1,6 +1,7 @@
 ﻿using DemoLogin.DTOs;
 using DemoLogin.Repositories.Contracts;
 using DemoLogin.Responses;
+using DemoLogin.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,17 +15,20 @@ namespace DemoLogin.Controllers
         [Authorize]
         public async Task<ActionResult<UserResponse>> GetUserAsync()
         {
-            var authHeader = Request.Headers["Authorization"].ToString();
-            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-                return Unauthorized("Token is missing or invalid.");
+            try
+            {
+                var token = Request.GetBearerToken();
+                var response = await accountInterface.GetUserAsync(token);
 
-            var token = authHeader.Substring("Bearer ".Length).Trim();
-            var response = await accountInterface.GetUserAsync(token);
+                if (!response.Flag)
+                    return BadRequest(response.Message);
 
-            if (!response.Flag)
-                return BadRequest(response.Message);
-
-            return Ok(response);
+                return Ok(response);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(ex.Message);
+            }
         }
 
         [HttpPost("register")]
